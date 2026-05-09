@@ -13,6 +13,9 @@ obj/
 .env.local
 !.env.example
 
+## UI config (contains API URL — injected via CI secret)
+docs/config.js
+
 ## OS
 .DS_Store
 Thumbs.db

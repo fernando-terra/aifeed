@@ -377,8 +377,9 @@
 
 <div id="toast"></div>
 
+<script src="config.js"></script>
 <script>
-  const API = 'https://bluezee.tailb9532e.ts.net:8443';
+  const API = (window.AIFEED_API || '').replace(/\/$/, '');
 
   const SOURCE_META = {
     hackernews:  { label: 'Hacker News',  color: 'hackernews'  },
