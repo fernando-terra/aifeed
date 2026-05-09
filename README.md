@@ -69,6 +69,34 @@ Exceeded limits return `429 Too Many Requests`.
 
 ---
 
+## Running with Docker
+
+```bash
+git clone https://github.com/fernando-terra/aifeed
+cd aifeed
+
+# Configure optional tokens
+cp .env.example .env
+# edit .env with GITHUB_TOKEN and/or PRODUCTHUNT_TOKEN
+
+docker compose up -d
+```
+
+The API will be available at `http://localhost:8080`. The SQLite database is persisted in the `aifeed-data` Docker volume.
+
+```bash
+# View logs
+docker compose logs -f aifeed
+
+# Stop
+docker compose down
+
+# Rebuild after code changes
+docker compose up -d --build
+```
+
+---
+
 ## Running locally
 
 **Prerequisites:** .NET 10 SDK
