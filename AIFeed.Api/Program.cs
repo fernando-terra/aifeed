@@ -88,10 +88,18 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
+// CORS — allow GitHub Pages UI
+builder.Services.AddCors(options =>
+    options.AddPolicy("ui", policy => policy
+        .WithOrigins("https://fernando-terra.github.io")
+        .AllowAnyMethod()
+        .AllowAnyHeader()));
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
+app.UseCors("ui");
 app.UseRateLimiter();
 
 // Apply EF migrations on startup
