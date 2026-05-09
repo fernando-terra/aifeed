@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIFeed — AI News Broker</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #141414;
+      --border: #222;
+      --text: #e8e8e8;
+      --muted: #666;
+      --accent: #6366f1;
+      --accent-dim: #6366f120;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --tag-bg: #1e1e2e;
+      --radius: 10px;
+      --font: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.3px;
+    }
+    .logo span { color: var(--accent); }
+    .logo-sub {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 400;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .built-with {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .built-with a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .built-with a:hover { text-decoration: underline; }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 57px);
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sidebar-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      padding: 4px 10px;
+      margin-top: 8px;
+    }
+    .source-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: var(--font);
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .source-btn:hover { background: var(--surface); }
+    .source-btn.active { background: var(--accent-dim); color: var(--accent); }
+    .source-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Stats bar ───────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 24px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-val { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+    .stat-lbl { font-size: 11px; color: var(--muted); }
+
+    /* ── Main ────────────────────────────────────────────────── */
+    main { display: flex; flex-direction: column; }
+
+    /* ── Toolbar ─────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-wrap { position: relative; flex: 1; max-width: 340px; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 12px 8px 34px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap .icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); pointer-events: none; font-size: 14px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: var(--font);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+    .btn.primary:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ml-auto { margin-left: auto; }
+
+    /* ── Feed list ───────────────────────────────────────────── */
+    .feed-list { padding: 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+
+    .feed-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      gap: 16px;
+      transition: border-color 0.15s;
+    }
+    .feed-item:hover { border-color: #333; }
+
+    .item-source-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .item-body { flex: 1; min-width: 0; }
+    .item-title {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .item-title a {
+      color: var(--text);
+      text-decoration: none;
+    }
+    .item-title a:hover { color: var(--accent); }
+    .item-summary {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .item-source-badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+    }
+    .item-score {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .item-date { font-size: 11px; color: var(--muted); }
+    .item-author { font-size: 11px; color: var(--muted); }
+    .tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Pagination ──────────────────────────────────────────── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 24px;
+    }
+    .page-info { font-size: 13px; color: var(--muted); }
+
+    /* ── Empty / Loading ─────────────────────────────────────── */
+    .state-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .state-box .icon-lg { font-size: 40px; }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Source colors ───────────────────────────────────────── */
+    .c-hackernews  { background: #ff6600; }
+    .c-devto       { background: #3b49df; }
+    .c-arxiv       { background: #b31b1b; }
+    .c-github      { background: #6e40c9; }
+    .c-producthunt { background: #da552f; }
+    .c-all         { background: var(--accent); }
+
+    .t-hackernews  { color: #ff6600; }
+    .t-devto       { color: #3b49df; }
+    .t-arxiv       { color: #b31b1b; }
+    .t-github      { color: #6e40c9; }
+    .t-producthunt { color: #da552f; }
+
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      display: none;
+      gap: 8px;
+      align-items: center;
+      z-index: 200;
+      box-shadow: 0 4px 24px #00000060;
+    }
+    #toast.show { display: flex; }
+
+    @media (max-width: 700px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); padding: 12px; }
+      .sidebar-label { display: none; }
+      .stats-bar { gap: 16px; }
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    🤖 <span>AI</span>Feed
+    <span class="logo-sub">news broker</span>
+  </div>
+  <div class="built-with">
+    built with <a href="https://github.com/fernando-terra/arkn" target="_blank">Arkn</a> · .NET 10
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar">
+    <span class="sidebar-label">Sources</span>
+    <button class="source-btn active" data-source="" onclick="setSource(this, '')">
+      <span class="source-dot c-all"></span> All sources
+    </button>
+  </aside>
+
+  <main>
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">articles</div></div>
+      <div class="stat"><div class="stat-val" id="stat-pages">—</div><div class="stat-lbl">pages</div></div>
+      <div class="stat"><div class="stat-val" id="stat-src">—</div><div class="stat-lbl">active sources</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search articles…" oninput="onSearch()" />
+      </div>
+      <button class="btn primary ml-auto" id="refresh-btn" onclick="refreshFeed()">⟳ Refresh</button>
+    </div>
+
+    <div class="feed-list" id="feed-list">
+      <div class="state-box"><div class="spinner"></div><span>Loading feed…</span></div>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = 'https://bluezee.tailb9532e.ts.net:8443';
+
+  const SOURCE_META = {
+    hackernews:  { label: 'Hacker News',  color: 'hackernews'  },
+    devto:       { label: 'dev.to',        color: 'devto'       },
+    arxiv:       { label: 'arXiv',         color: 'arxiv'       },
+    github:      { label: 'GitHub',        color: 'github'      },
+    producthunt: { label: 'Product Hunt',  color: 'producthunt' },
+  };
+
+  let state = { source: '', page: 1, size: 20, search: '', searchTimer: null };
+
+  // ── Bootstrap ────────────────────────────────────────────────
+  async function init() {
+    await Promise.all([loadSources(), loadFeed()]);
+  }
+
+  // ── Sources sidebar ──────────────────────────────────────────
+  async function loadSources() {
+    try {
+      const res = await fetch(`${API}/sources`);
+      const sources = await res.json();
+      const sidebar = document.getElementById('sidebar');
+
+      document.getElementById('stat-src').textContent = sources.length;
+
+      sources.forEach(s => {
+        const meta = SOURCE_META[s.id] || { label: s.displayName, color: 'all' };
+        const btn = document.createElement('button');
+        btn.className = 'source-btn';
+        btn.dataset.source = s.id;
+        btn.onclick = () => setSource(btn, s.id);
+        btn.innerHTML = `<span class="source-dot c-${meta.color}"></span> ${meta.label}`;
+        sidebar.appendChild(btn);
+      });
+    } catch (e) { console.error('Sources error:', e); }
+  }
+
+  function setSource(btn, src) {
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.source = src;
+    state.page = 1;
+    state.search = '';
+    document.getElementById('search-input').value = '';
+    loadFeed();
+  }
+
+  // ── Feed ─────────────────────────────────────────────────────
+  async function loadFeed() {
+    const list = document.getElementById('feed-list');
+    list.innerHTML = '<div class="state-box"><div class="spinner"></div><span>Loading…</span></div>';
+
+    try {
+      let url;
+      if (state.search.trim().length >= 2) {
+        url = `${API}/search?q=${encodeURIComponent(state.search)}&page=${state.page}&size=${state.size}`;
+        if (state.source) url += `&source=${state.source}`;
+      } else {
+        url = `${API}/feed?page=${state.page}&size=${state.size}`;
+        if (state.source) url += `&source=${state.source}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      document.getElementById('stat-total').textContent = data.total.toLocaleString();
+      document.getElementById('stat-pages').textContent = data.pages;
+
+      renderFeed(data.items);
+      renderPagination(data.page, data.pages);
+    } catch (e) {
+      list.innerHTML = `<div class="state-box"><div class="icon-lg">⚠️</div><span>Could not load feed: ${e.message}</span></div>`;
+    }
+  }
+
+  function renderFeed(items) {
+    const list = document.getElementById('feed-list');
+    if (!items || items.length === 0) {
+      list.innerHTML = '<div class="state-box"><div class="icon-lg">📭</div><span>No items found.</span></div>';
+      return;
+    }
+    list.innerHTML = items.map(item => {
+      const meta   = SOURCE_META[item.source] || { label: item.source, color: 'all' };
+      const date   = item.publishedAt ? timeAgo(item.publishedAt) : '';
+      const tags   = (item.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('');
+      const score  = item.score > 0 ? `<span class="item-score">⬆ ${item.score.toLocaleString()}</span>` : '';
+      const author = item.author ? `<span class="item-author">· ${item.author}</span>` : '';
+      const summary = item.summary ? `<div class="item-summary">${escHtml(item.summary)}</div>` : '';
+
+      return `
+        <div class="feed-item">
+          <span class="item-source-dot c-${meta.color}"></span>
+          <div class="item-body">
+            <div class="item-title">
+              <a href="${item.url}" target="_blank" rel="noopener">${escHtml(item.title)}</a>
+            </div>
+            ${summary}
+            <div class="item-meta">
+              <span class="item-source-badge t-${meta.color}">${meta.label}</span>
+              ${score}
+              <span class="item-date">${date}</span>
+              ${author}
+              ${tags}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderPagination(page, pages) {
+    const el = document.getElementById('pagination');
+    if (pages <= 1) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <button class="btn" onclick="goPage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>← Prev</button>
+      <span class="page-info">Page ${page} of ${pages}</span>
+      <button class="btn" onclick="goPage(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next →</button>`;
+  }
+
+  function goPage(p) { state.page = p; loadFeed(); window.scrollTo({ top: 0 }); }
+
+  // ── Search ───────────────────────────────────────────────────
+  function onSearch() {
+    clearTimeout(state.searchTimer);
+    state.search = document.getElementById('search-input').value;
+    state.page = 1;
+    state.searchTimer = setTimeout(loadFeed, 400);
+  }
+
+  // ── Refresh ──────────────────────────────────────────────────
+  async function refreshFeed() {
+    const btn = document.getElementById('refresh-btn');
+    btn.disabled = true;
+    btn.textContent = '⟳ Refreshing…';
+    try {
+      const res = await fetch(`${API}/feed/refresh`, { method: 'POST' });
+      const data = await res.json();
+      toast('✅ ' + data.message);
+      state.page = 1;
+      await loadFeed();
+    } catch (e) {
+      toast('❌ Refresh failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⟳ Refresh';
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────
+  function timeAgo(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  init();
+</script>
+
+</body>
+</html>
