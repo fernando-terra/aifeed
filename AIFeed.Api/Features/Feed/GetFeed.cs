@@ -37,13 +37,7 @@ public static class GetFeed
             .OrderByDescending(x => x.PublishedAt)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(x => new
-            {
-                x.Id, x.Title, x.Url, x.Source,
-                x.Tags, x.Score, x.Author, x.Summary,
-                x.PublishedAt, x.IngestedAt,
-            })
-            .ToListAsync();
+            .ToListAsync(); // materialise first — Tags value converter can't project inside SQL
 
         return Results.Ok(new
         {
