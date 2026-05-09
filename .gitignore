@@ -1,0 +1,22 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+*.suo
+*.userprefs
+
+## SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+## Environment
+.env
+.env.*
+!.env.example
+
+## OS
+.DS_Store
+Thumbs.db
