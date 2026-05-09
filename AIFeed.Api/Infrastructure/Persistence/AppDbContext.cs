@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace AIFeed.Api.Infrastructure.Persistence;
 
@@ -16,7 +17,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Tags)
              .HasConversion(
                  v => string.Join(',', v),
-                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
+                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries))
+             .Metadata.SetValueComparer(new ValueComparer<string[]>(
+                 (a, b) => a != null && b != null && a.SequenceEqual(b),
+                 v => v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())),
+                 v => v.ToArray()));
 
             // SQLite doesn't support DateTimeOffset natively — store as Unix seconds (long)
             e.Property(x => x.PublishedAt)
