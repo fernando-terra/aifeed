@@ -28,18 +28,20 @@ var dbPath = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(dbPath));
 
-// Feed sources — registered as IFeedSource so IEnumerable<IFeedSource> resolves all
+// Feed sources — AddHttpClient<T> registers each adapter with a properly configured
+// HttpClient from IHttpClientFactory. The factory registration forwards the resolved
+// concrete type as IFeedSource so IEnumerable<IFeedSource> resolves all of them.
 builder.Services.AddHttpClient<HackerNewsSource>();
 builder.Services.AddHttpClient<DevToSource>();
 builder.Services.AddHttpClient<ArxivSource>();
 builder.Services.AddHttpClient<GitHubTrendingSource>();
 builder.Services.AddHttpClient<ProductHuntSource>();
 
-builder.Services.AddSingleton<IFeedSource, HackerNewsSource>();
-builder.Services.AddSingleton<IFeedSource, DevToSource>();
-builder.Services.AddSingleton<IFeedSource, ArxivSource>();
-builder.Services.AddSingleton<IFeedSource, GitHubTrendingSource>();
-builder.Services.AddSingleton<IFeedSource, ProductHuntSource>();
+builder.Services.AddTransient<IFeedSource>(sp => sp.GetRequiredService<HackerNewsSource>());
+builder.Services.AddTransient<IFeedSource>(sp => sp.GetRequiredService<DevToSource>());
+builder.Services.AddTransient<IFeedSource>(sp => sp.GetRequiredService<ArxivSource>());
+builder.Services.AddTransient<IFeedSource>(sp => sp.GetRequiredService<GitHubTrendingSource>());
+builder.Services.AddTransient<IFeedSource>(sp => sp.GetRequiredService<ProductHuntSource>());
 
 // Arkn background jobs
 builder.Services.AddArknJobs(jobs =>

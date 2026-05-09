@@ -1,53 +1,77 @@
-# AIFeed
+# 🤖 AIFeed
 
-> **AI news broker** — aggregates content from Hacker News, dev.to, arXiv, GitHub Trending and Product Hunt into a single, queryable feed.
+> A minimal, production-ready AI news broker built with [Arkn](https://github.com/fernando-terra/arkn) — aggregates content from multiple sources into a single, clean API.
 
-[![Built with Arkn](https://img.shields.io/badge/Built%20with-Arkn-7c6af7?style=flat-square)](https://github.com/fernando-terra/arkn)
-[![.NET 10](https://img.shields.io/badge/.NET-10-512bd4?style=flat-square)](https://dotnet.microsoft.com)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-
-A canonical demo of the [Arkn framework](https://github.com/fernando-terra/arkn) — showing `Result<T>` error handling, `IArknJob` background scheduling, `ArknHttpClient` adapters, and vertical-slice architecture in a real-world API.
+[![Built with Arkn](https://img.shields.io/badge/built%20with-Arkn-6366f1?style=flat-square)](https://github.com/fernando-terra/arkn)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
-## Features
+## What it does
 
-- **5 AI news sources** — HackerNews (Algolia), dev.to, arXiv (Atom), GitHub Search, Product Hunt (GraphQL)
-- **Automatic refresh** — Arkn.Jobs cron scheduler pulls new items every 30 minutes
-- **Daily & weekly digests** — top items grouped by source
-- **Full-text search** — keyword + source + date range filtering
-- **Rate limiting** — ASP.NET Core native (20 req/s global, 100 req/min per IP)
-- **Zero dropped sources** — one failing source never blocks the others (`Result<T>`)
-- **SQLite persistence** — lightweight, zero-config, EF Core migrations
+AIFeed continuously ingests AI-related content from five sources, normalises it into a unified schema, and exposes a simple REST API with pagination, search, and daily/weekly digests.
+
+| Source | Content | Auth required |
+|---|---|---|
+| **Hacker News** | Discussions and links | ❌ |
+| **dev.to** | Technical articles | ❌ |
+| **arXiv** | Research papers (cs.AI) | ❌ |
+| **GitHub Trending** | AI repositories | ❌ (optional token for higher rate limit) |
+| **Product Hunt** | AI product launches | ✅ `PRODUCTHUNT_TOKEN` |
 
 ---
 
 ## Architecture
 
-Vertical Slice — each feature owns its endpoint, query logic and response shape:
+AIFeed uses **Vertical Slice Architecture** — each feature lives in its own folder and owns its own request/response logic. There is no shared application layer.
 
 ```
 AIFeed.Api/
 ├── Features/
-│   ├── Sources/          → GET /sources, GET /sources/{id}/health
-│   ├── Feed/             → GET /feed, POST /feed/refresh
-│   ├── Digest/           → GET /digest/daily, GET /digest/weekly
-│   └── Search/           → GET /search
-├── Infrastructure/
-│   ├── Persistence/      → AppDbContext, FeedItem, Migrations
-│   ├── Sources/          → IFeedSource + 5 adapters
-│   └── Jobs/             → RefreshFeedJob, CleanupJob
-└── Program.cs            → DI, rate limiting, EF migrations
+│   ├── Sources/       → GET /sources, GET /sources/{id}/health
+│   ├── Feed/          → GET /feed, POST /feed/refresh
+│   ├── Digest/        → GET /digest/daily, GET /digest/weekly
+│   └── Search/        → GET /search
+└── Infrastructure/
+    ├── Persistence/   → EF Core + SQLite (AppDbContext, FeedItem)
+    ├── Sources/       → One adapter per source (IFeedSource)
+    └── Jobs/          → RefreshFeedJob (every 30 min) + CleanupJob (daily)
 ```
 
-Each `IFeedSource` adapter:
-1. Calls its external API using a typed `HttpClient`
-2. Returns `Result<IReadOnlyList<FeedItem>>`
-3. Failure = logged + skipped, never propagated up
+The `IFeedSource` contract ensures each adapter is independently replaceable. A failing source returns `Result.Failure<T>` — it never crashes the feed.
 
 ---
 
-## Quick start
+## Endpoints
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/feed` | Paginated feed (`?page=&size=&source=`) |
+| `POST` | `/feed/refresh` | Trigger immediate refresh |
+| `GET` | `/sources` | List all sources |
+| `GET` | `/sources/{id}/health` | Health check one source |
+| `GET` | `/digest/daily` | Today's top items |
+| `GET` | `/digest/weekly` | This week's top items |
+| `GET` | `/search` | Search by keyword, source, date range |
+| `GET` | `/health` | API health check |
+
+---
+
+## Rate Limiting
+
+The API is public with two protection layers:
+
+- **Spike arrest** — global 20 req/s sliding window
+- **Per-IP** — 100 req/min sliding window
+
+Exceeded limits return `429 Too Many Requests`.
+
+---
+
+## Running locally
+
+**Prerequisites:** .NET 10 SDK
 
 ```bash
 git clone https://github.com/fernando-terra/aifeed
@@ -55,84 +79,49 @@ cd aifeed/AIFeed.Api
 dotnet run
 ```
 
-The API starts on `http://localhost:5000`. SQLite database is created automatically on first run.
+The SQLite database is created automatically on first run (`aifeed.db`).
 
-### Optional env vars
-
-| Variable | Purpose |
-|---|---|
-| `GITHUB_TOKEN` | GitHub PAT — raises rate limit from 60 to 5000 req/h |
-| `PRODUCTHUNT_TOKEN` | Product Hunt Developer Token — enables PH source |
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/sources` | List all registered sources |
-| `GET` | `/sources/{id}/health` | Probe a single source |
-| `GET` | `/feed` | Paginated feed (`?page=&size=&source=`) |
-| `POST` | `/feed/refresh` | Trigger immediate refresh |
-| `GET` | `/digest/daily` | Top items from last 24h by source |
-| `GET` | `/digest/weekly` | Top items from last 7 days by source |
-| `GET` | `/search` | Full-text search (`?q=&source=&from=&to=`) |
-
-### Example requests
+**Optional environment variables:**
 
 ```bash
-# Get the feed (page 1, 20 items)
+GITHUB_TOKEN=ghp_...          # raises GitHub API limit from 60 to 5000 req/h
+PRODUCTHUNT_TOKEN=...         # enables Product Hunt source
+```
+
+### Trigger a manual refresh
+
+```bash
+curl -X POST http://localhost:5000/feed/refresh
+```
+
+### Query the feed
+
+```bash
+# Latest 20 items
 curl http://localhost:5000/feed
 
 # Filter by source
-curl "http://localhost:5000/feed?source=hackernews&size=10"
+curl "http://localhost:5000/feed?source=arxiv&size=10"
 
 # Search
-curl "http://localhost:5000/search?q=LLM&source=arxiv"
-
-# Daily digest — top 5 per source
-curl http://localhost:5000/digest/daily
-
-# Trigger a manual refresh
-curl -X POST http://localhost:5000/feed/refresh
-
-# Check HackerNews source health
-curl http://localhost:5000/sources/hackernews/health
+curl "http://localhost:5000/search?q=llm"
 ```
 
 ---
 
-## Arkn packages used
+## How Arkn is used
 
-| Package | Role |
+This project showcases several [Arkn](https://github.com/fernando-terra/arkn) packages working together:
+
+| Package | Usage |
 |---|---|
-| `Arkn.Results` | `Result<T>` — explicit success/failure for all source adapters |
-| `Arkn.Jobs` | `RefreshFeedJob` (*/30 cron) + `CleanupJob` (daily 03:00 UTC) |
-| `Arkn.Logging` | Structured logging with console sink |
-| `Arkn.Http` | Typed HTTP clients for each source adapter |
-| `Arkn.Core` | Domain primitives |
+| `Arkn.Results` | Every source adapter returns `Result<T>` — failures are explicit and composable |
+| `Arkn.Http` | Typed `HttpClient` wrappers per source via `IHttpClientFactory` |
+| `Arkn.Jobs` | `RefreshFeedJob` (cron: `*/30 * * * *`) + `CleanupJob` (cron: `0 3 * * *`) |
+| `Arkn.Logging` | Structured console logging across jobs and endpoints |
 
 ---
 
-## Tech stack
+## License
 
-- **.NET 10** / ASP.NET Core Minimal API
-- **EF Core 9** + **SQLite** (zero-config persistence)
-- **Arkn** framework (Results, Jobs, Logging, Http)
-- **ASP.NET Core Rate Limiting** (native, no middleware package)
-
----
-
-## Built with Arkn
-
-This project demonstrates how [Arkn](https://github.com/fernando-terra/arkn) enforces explicit patterns in a real API:
-
-- **No exceptions for business logic** — every source adapter returns `Result<T>`
-- **No silent failures** — `RefreshFeedJob` logs each source failure individually
-- **Typed HTTP clients** — each adapter gets its own `HttpClient` via DI
-- **Background jobs with Result contracts** — `IArknJob.ExecuteAsync` returns `Task<Result>`
-
----
-
-*Author: [Fernando Terra](https://github.com/fernando-terra)*
+MIT — see [LICENSE](LICENSE).

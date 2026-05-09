@@ -2,21 +2,21 @@
 bin/
 obj/
 *.user
-.vs/
-.vscode/
 *.suo
-*.userprefs
-
-## SQLite databases
+.vs/
 *.db
 *.db-shm
 *.db-wal
 
 ## Environment
 .env
-.env.*
-!.env.example
+.env.local
 
 ## OS
 .DS_Store
 Thumbs.db
+
+## Rider / VS Code
+.idea/
+.vscode/
+*.DotSettings.user
