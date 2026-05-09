@@ -18,6 +18,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                  v => string.Join(',', v),
                  v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
 
+            // SQLite doesn't support DateTimeOffset natively — store as Unix seconds (long)
+            e.Property(x => x.PublishedAt)
+             .HasConversion(
+                 v => v.ToUnixTimeSeconds(),
+                 v => DateTimeOffset.FromUnixTimeSeconds(v));
+
+            e.Property(x => x.IngestedAt)
+             .HasConversion(
+                 v => v.ToUnixTimeSeconds(),
+                 v => DateTimeOffset.FromUnixTimeSeconds(v));
+
             e.HasIndex(x => x.Source);
             e.HasIndex(x => x.PublishedAt);
             e.HasIndex(x => x.IngestedAt);
