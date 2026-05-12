@@ -1,16 +1,18 @@
 # 🤖 AIFeed
 
-> A minimal, production-ready AI news broker built with [Arkn](https://github.com/fernando-terra/arkn) — aggregates content from multiple sources into a single, clean API.
+> A minimal, production-ready AI news broker — aggregates content from multiple sources into a unified feed with a React frontend and a .NET 10 API.
 
 [![Built with Arkn](https://img.shields.io/badge/built%20with-Arkn-6366f1?style=flat-square)](https://github.com/fernando-terra/arkn)
 [![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
 ## What it does
 
-AIFeed continuously ingests AI-related content from five sources, normalises it into a unified schema, and exposes a simple REST API with pagination, search, and daily/weekly digests.
+AIFeed continuously ingests AI-related content from five sources, normalises it into a unified schema, and serves it through a clean REST API and a React UI with search, pagination, and per-source filtering.
 
 | Source | Content | Auth required |
 |---|---|---|
@@ -22,12 +24,31 @@ AIFeed continuously ingests AI-related content from five sources, normalises it 
 
 ---
 
-## Architecture
-
-AIFeed uses **Vertical Slice Architecture** — each feature lives in its own folder and owns its own request/response logic. There is no shared application layer.
+## Monorepo structure
 
 ```
-AIFeed.Api/
+aifeed/
+├── apps/
+│   ├── api/           → .NET 10 REST API (Vertical Slice Architecture)
+│   └── web/           → React 19 + Vite frontend
+├── nginx/
+│   └── default.conf   → Serves the React app + proxies /api/* to the .NET API
+├── Dockerfile.api     → Multi-stage build for the .NET API
+├── Dockerfile.web     → Multi-stage build for React + nginx
+├── docker-compose.yml → Orchestrates aifeed-api + aifeed-web
+└── .env.example       → Optional token configuration
+```
+
+---
+
+## Architecture
+
+### API (`apps/api`)
+
+**Vertical Slice Architecture** — each feature owns its own request/response logic with no shared application layer.
+
+```
+apps/api/
 ├── Features/
 │   ├── Sources/       → GET /sources, GET /sources/{id}/health
 │   ├── Feed/          → GET /feed, POST /feed/refresh
@@ -41,26 +62,28 @@ AIFeed.Api/
 
 The `IFeedSource` contract ensures each adapter is independently replaceable. A failing source returns `Result.Failure<T>` — it never crashes the feed.
 
+### Frontend (`apps/web`)
+
+React 19 + Vite app served by nginx. The API is consumed via relative paths (`/api/*`) — nginx handles the proxy internally. No CORS, no public API exposure.
+
 ---
 
-## Endpoints
+## API Endpoints
 
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/feed` | Paginated feed (`?page=&size=&source=`) |
-| `POST` | `/feed/refresh` | Trigger immediate refresh |
-| `GET` | `/sources` | List all sources |
-| `GET` | `/sources/{id}/health` | Health check one source |
-| `GET` | `/digest/daily` | Today's top items |
-| `GET` | `/digest/weekly` | This week's top items |
-| `GET` | `/search` | Search by keyword, source, date range |
-| `GET` | `/health` | API health check |
+| `GET` | `/api/feed` | Paginated feed (`?page=&size=&source=`) |
+| `POST` | `/api/feed/refresh` | Trigger immediate refresh |
+| `GET` | `/api/sources` | List all sources |
+| `GET` | `/api/sources/{id}/health` | Health check one source |
+| `GET` | `/api/digest/daily` | Today's top items |
+| `GET` | `/api/digest/weekly` | This week's top items |
+| `GET` | `/api/search` | Search by keyword, source, date range |
+| `GET` | `/api/health` | API health check |
 
 ---
 
 ## Rate Limiting
-
-The API is public with two protection layers:
 
 - **Spike arrest** — global 20 req/s sliding window
 - **Per-IP** — 100 req/min sliding window
@@ -82,11 +105,12 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The API will be available at `http://localhost:8080`. The SQLite database is persisted in the `aifeed-data` Docker volume.
+The app will be available at `http://localhost:8181`.
+The SQLite database is persisted in the `aifeed-data` Docker volume.
 
 ```bash
 # View logs
-docker compose logs -f aifeed
+docker compose logs -f
 
 # Stop
 docker compose down
@@ -97,49 +121,37 @@ docker compose up -d --build
 
 ---
 
-## Running locally
+## Running locally (dev)
 
-**Prerequisites:** .NET 10 SDK
+**Prerequisites:** .NET 10 SDK, Node.js 22+
+
+### API
 
 ```bash
-git clone https://github.com/fernando-terra/aifeed
-cd aifeed/AIFeed.Api
+cd apps/api
 dotnet run
+# API available at http://localhost:5000
 ```
 
-The SQLite database is created automatically on first run (`aifeed.db`).
+### Frontend
+
+```bash
+cd apps/web
+npm install
+npm run dev
+# Dev server at http://localhost:5173 (proxies /api/* to localhost:5000)
+```
 
 **Optional environment variables:**
 
 ```bash
-GITHUB_TOKEN=ghp_...          # raises GitHub API limit from 60 to 5000 req/h
-PRODUCTHUNT_TOKEN=...         # enables Product Hunt source
-```
-
-### Trigger a manual refresh
-
-```bash
-curl -X POST http://localhost:5000/feed/refresh
-```
-
-### Query the feed
-
-```bash
-# Latest 20 items
-curl http://localhost:5000/feed
-
-# Filter by source
-curl "http://localhost:5000/feed?source=arxiv&size=10"
-
-# Search
-curl "http://localhost:5000/search?q=llm"
+GITHUB_TOKEN=ghp_...       # raises GitHub API limit from 60 to 5000 req/h
+PRODUCTHUNT_TOKEN=...      # enables Product Hunt source
 ```
 
 ---
 
 ## How Arkn is used
-
-This project showcases several [Arkn](https://github.com/fernando-terra/arkn) packages working together:
 
 | Package | Usage |
 |---|---|
