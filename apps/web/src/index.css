@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap');
+
+:root {
+  --bg: #0d0d0d;
+  --surface: #141414;
+  --border: #222;
+  --text: #e8e8e8;
+  --muted: #666;
+  --accent: #6366f1;
+  --accent-dim: #6366f120;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --tag-bg: #1e1e2e;
+  --radius: 10px;
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+}
+
+/* Source colors */
+.c-hackernews  { background: #ff6600; }
+.c-devto       { background: #3b49df; }
+.c-arxiv       { background: #b31b1b; }
+.c-github      { background: #6e40c9; }
+.c-producthunt { background: #da552f; }
+.c-all         { background: var(--accent); }
+
+.t-hackernews  { color: #ff6600; }
+.t-devto       { color: #3b49df; }
+.t-arxiv       { color: #b31b1b; }
+.t-github      { color: #6e40c9; }
+.t-producthunt { color: #da552f; }

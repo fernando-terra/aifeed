@@ -1,23 +1,19 @@
 services:
-  aifeed:
+  aifeed-api:
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: aifeed
+      context: ./apps/api
+      dockerfile: ../../Dockerfile.api
+    container_name: aifeed-api
     restart: unless-stopped
-    ports:
-      - "8181:8080"
     volumes:
       - aifeed-data:/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Default=Data Source=/data/aifeed.db
-      # Optional: raise GitHub API rate limit from 60 to 5000 req/h
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      # Optional: enables Product Hunt source
       - PRODUCTHUNT_TOKEN=${PRODUCTHUNT_TOKEN:-}
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -26,6 +22,27 @@ services:
       - "com.bluezee.project=aifeed"
       - "com.bluezee.managed=true"
 
+  aifeed-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: aifeed-web
+    restart: unless-stopped
+    ports:
+      - "8181:80"
+    depends_on:
+      - aifeed-api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.bluezee.project=aifeed"
+      - "com.bluezee.managed=true"
+
 volumes:
   aifeed-data:
-    driver: local
+    external: true
+    name: aifeed_aifeed-data
